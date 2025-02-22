@@ -1,7 +1,6 @@
 import json
 import os
 import random
-import time
 import bcrypt
 import keyboard
 from workSG import *
@@ -20,48 +19,44 @@ def exit_acc():
     
 
 def generate_math_problem(maxnum: int) -> str:
-    problem = ""
     operators = ['+', '-', '*', '/', "**"]
-    lst = [-maxnum - 2, maxnum + 2]
-    lst.sort()
-    num1 = num2 = num3 = 0
-    while num1 == 0:
-        num1 = random.randint(lst[0], lst[1])
-    while num2 == 0:
-        num2 = random.randint(lst[0], lst[1])
-    while num3 == 0:
-        num3 = random.randint(lst[0], lst[1])
+    kol = min(((maxnum - 1) // 10) + 1, 40)
+    low, high = -maxnum - 10, maxnum + 10
 
-    operator1 = random.choice(operators)
-    operator2 = random.choice(operators)
+    operands = []
+    for _ in range(kol + 1):
+        n = 0
+        while n == 0:
+            n = random.randint(low, high)
+        operands.append(n)
 
-    if operator1 == "/" and num2 == 0:
-        num2 = random.randint(1, lst[1])
-    if operator2 == "/" and num3 == 0:
-        num3 = random.randint(1, lst[1])
+    # Генератор
+    ops = [random.choice(operators) for _ in range(kol)]
 
-    if operator1 == "**" or operator2 == "**":
-        num1 = num1 % 10
-        num2 = num2 % 5
-        num3 = num3 % 3
+    # деление и степень
+    for i, op in enumerate(ops):
+        if op == "/":
+            if operands[i+1] == 0:
+                # анти ошибка
+                operands[i+1] = random.randint(1, high)
+        if op == "**":
+            # ограничиваем степень
+            operands[i] = operands[i] % 10 if operands[i] != 0 else 1
+            exponent = abs(operands[i+1]) % 5
+            if exponent == 0:
+                exponent = 2
+            operands[i+1] = exponent
 
-    if operator1 == "**" and operator2 != "**":
-        problem = f"({num1} ** {num2}) {operator2} {num3}"
-    if operator2 == "**" and operator1 != "**":
-        problem = f"{num1} {operator1} ({num2} ** {num3}) "
-    elif operator2 == "**" and operator1 == "**":
-        problem = f"({num1} {operator1} {num2}) {operator2} {num3}"
-    else:
-        problem = f"{num1} {operator1} {num2} {operator2} {num3}"
-    
+    expr = str(operands[0])
+    for i, op in enumerate(ops):
+        expr += f" {op} {operands[i+1]}"
+
     try:
-        eval(problem)
-    except ZeroDivisionError:
-        problem = problem.replace("0",'1')
-    except OverflowError:
-        problem = generate_math_problem(maxnum)
+        eval(expr)
+    except (ZeroDivisionError,OverflowError):
+        return generate_math_problem(maxnum)
     
-    return problem
+    return expr
 
 def hash_password(password: str) -> bytes:
     return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
